@@ -1,9 +1,12 @@
-package com.dms.jr.service;
+package com.dms.jr.helper;
 
 import com.dms.jr.bean.AssetDetail;
 import com.dms.jr.bean.FileDetail;
 import com.dms.jr.bean.FileResponse;
 import com.dms.jr.enums.NodeType;
+import com.dms.jr.exceptions.ServiceException;
+import com.dms.jr.utils.ErrorCode;
+import com.dms.jr.utils.ErrorMessages;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -83,7 +86,8 @@ public class RepositoryHelper {
         Node node = createNodes(session, absPath);
         if (node.hasNode(file.getName())) {
             System.out.println("File already added.");
-            return;
+            throw new ServiceException(ErrorCode.FILE_ALREADY_EXISTS, ErrorMessages.FILE_ALREADY_EXISTS);
+//            return;
         }
 
         Node fileHolder = node.addNode(file.getName()); // Created a node with that of file Name
