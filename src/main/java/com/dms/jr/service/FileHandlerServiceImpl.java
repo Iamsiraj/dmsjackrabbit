@@ -1,6 +1,12 @@
 package com.dms.jr.service;
 
 import com.dms.jr.bean.FileResponse;
+import com.dms.jr.exceptions.ServiceException;
+import com.dms.jr.helper.RepositoryHelper;
+import com.dms.jr.utils.ErrorCode;
+import com.dms.jr.utils.ErrorMessages;
+import com.dms.jr.utils.JackrabbitConstants;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.jackrabbit.oak.Oak;
 import org.apache.jackrabbit.oak.jcr.Jcr;
@@ -22,6 +28,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 @Service
+@Slf4j
 public class FileHandlerServiceImpl implements FileHandlerService {
 
     @Value("${spring.datasource.url}")
@@ -33,37 +40,28 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     private String DATASOURCE_PASSWORD;
 
     @Override
-    public void uploadFile(String basePath, String fileName, MultipartFile file) throws RepositoryException {
+    public void uploadFile(String basePath, String fileName, MultipartFile file) {
 
         Repository repo = getOrCreateRepository();
 
         // Create a JCR session
         Session session = getSession(repo);
 
-        File newFile = new File(fileName);
-
-        try (OutputStream os = new FileOutputStream(newFile)) {
-            os.write(file.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-//		Saving PDF File
         try {
-            RepositoryHelper.addFileNode(session, basePath, newFile, "admin");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            File newFile = convertMultipartFileToFile(fileName, file.getBytes());
+            RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+        } catch (ServiceException e) {
+            throw new ServiceException(e.getCode(), e.getMessage());
+        } catch (RepositoryException | IOException e) {
+            throw new ServiceException(ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
         }
 
-        session.save();
-        System.out.println("Session Save");
-
-        session.logout();
-        System.out.println("Session Logout");
+        sessionSave(session);
+        sessionLogout(session);
     }
 
     @Override
-    public Resource downloadFile(String basePath, String fileName) throws RepositoryException {
+    public Resource downloadFile(String basePath, String fileName) {
         Repository repo = getOrCreateRepository();
         Session session = getSession(repo);
 
@@ -71,32 +69,53 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         FileResponse fileContents = null;
         try {
             fileContents = RepositoryHelper.getFileContents(session, basePath, fileName);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException | RepositoryException e) {
+            throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
         }
 
-        File newFile = new File(fileName);
-
-        try (OutputStream os = new FileOutputStream(newFile)) {
-            os.write(fileContents.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        File newFile = convertMultipartFileToFile(fileName, fileContents.getBytes());
 
         Resource resource = new FileSystemResource(newFile);
 
+        sessionSave(session);
 
-        session.save();
-        System.out.println("Session Save");
-
-        session.logout();
-        System.out.println("Session Logout");
+        sessionLogout(session);
 
         return resource;
     }
 
-    private Session getSession(Repository repo) throws RepositoryException {
-        return repo.login(new SimpleCredentials("admin", "admin".toCharArray()));
+    private void sessionSave(Session session) {
+        try {
+            session.save();
+        } catch (RepositoryException e) {
+            throw new ServiceException(123, "123");
+        }
+        System.out.println("Session Save");
+    }
+
+    private File convertMultipartFileToFile(String fileName, byte[] fileByteArray) {
+        File newFile = new File(fileName);
+
+        try (OutputStream os = new FileOutputStream(newFile)) {
+            os.write(fileByteArray);
+        } catch (IOException e) {
+            log.error("convertMultipartFileToFile :: Error occurred : {}", e.getMessage());
+            throw new ServiceException(123, "123");
+        }
+        return newFile;
+    }
+
+    private void sessionLogout(Session session) {
+        session.logout();
+        System.out.println("Session Logout");
+    }
+
+    private Session getSession(Repository repo) {
+        try {
+            return repo.login(new SimpleCredentials(JackrabbitConstants.USER, JackrabbitConstants.PASSWORD.toCharArray()));
+        } catch (RepositoryException e) {
+            throw new ServiceException(123, "123");
+        }
     }
 
     private Repository getOrCreateRepository() {

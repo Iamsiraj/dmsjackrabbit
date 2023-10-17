@@ -10,8 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.jcr.RepositoryException;
-
 @RestController
 @Slf4j
 @RequestMapping("/file")
@@ -24,11 +22,7 @@ public class FileHandlerController {
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName, @RequestParam("file") MultipartFile file) {
 
-        try {
-            fileHandlerService.uploadFile(basePath, fileName, file);
-        } catch (RepositoryException e) {
-            throw new RuntimeException(e);
-        }
+        fileHandlerService.uploadFile(basePath, fileName, file);
         return ResponseEntity.ok("Ok");
     }
 
@@ -36,11 +30,8 @@ public class FileHandlerController {
     public ResponseEntity<?> downloadFile(@RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName) {
 
         Resource resource = null;
-        try {
-            resource = fileHandlerService.downloadFile(basePath, fileName);
-        } catch (RepositoryException e) {
-            throw new RuntimeException(e);
-        }
+        resource = fileHandlerService.downloadFile(basePath, fileName);
+
         String contentType = "application/octet-stream";
         String headerValue = "attachment; filename=\"" + resource.getFilename() + "\"";
 
