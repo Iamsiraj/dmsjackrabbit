@@ -69,6 +69,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         FileResponse fileContents = null;
         try {
             fileContents = RepositoryHelper.getFileContents(session, basePath, fileName);
+        } catch (ServiceException e) {
+            throw new ServiceException(e.getCode(), e.getMessage());
         } catch (IOException | RepositoryException e) {
             throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
         }
@@ -82,6 +84,22 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         sessionLogout(session);
 
         return resource;
+    }
+
+    @Override
+    public void deleteFile(String basePath, String fileName) {
+        Repository repo = getOrCreateRepository();
+        Session session = getSession(repo);
+
+        try {
+            RepositoryHelper.removeFileContents(session, basePath, fileName);
+        } catch (ServiceException e) {
+            throw new ServiceException(e.getCode(), e.getMessage());
+        } catch (RepositoryException e) {
+            throw new ServiceException(ErrorCode.FILE_DELETE_ERROR, ErrorMessages.FILE_DELETE_ERROR);
+        }
+        sessionSave(session);
+        sessionLogout(session);
     }
 
     private void sessionSave(Session session) {

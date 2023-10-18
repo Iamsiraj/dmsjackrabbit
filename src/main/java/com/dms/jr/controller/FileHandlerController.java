@@ -40,4 +40,11 @@ public class FileHandlerController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
                 .body(resource);
     }
+
+    @DeleteMapping
+    public ResponseEntity<?> deleteFile(@RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName) {
+
+        fileHandlerService.deleteFile(basePath, fileName);
+        return ResponseEntity.ok("Ok");
+    }
 }

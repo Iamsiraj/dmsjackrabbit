@@ -27,6 +27,11 @@ public class RepositoryHelper {
     public static FileResponse getFileContents(Session session, String basePath, String fileName)
             throws RepositoryException, IOException {
         Node node = session.getNode(basePath);
+
+        if (!node.hasNode(fileName)) {
+            throw new ServiceException(ErrorCode.FILE_DO_NOT_EXISTS, ErrorMessages.FILE_DO_NOT_EXISTS);
+        }
+
         Node fileHolder = node.getNode(fileName);
         Node fileContent = fileHolder.getNode("theFile").getNode("jcr:content");
         Binary bin = fileContent.getProperty("jcr:data").getBinary();
@@ -41,6 +46,17 @@ public class RepositoryHelper {
         fileResponse.setBytes(bytes);
         fileResponse.setContentType(fileContent.getProperty("jcr:mimeType").getString());
         return fileResponse;
+
+    }
+
+    public static void removeFileContents(Session session, String basePath, String fileName)
+            throws RepositoryException {
+        Node node = session.getNode(basePath);
+        if (!node.hasNode(fileName)) {
+            throw new ServiceException(ErrorCode.FILE_DO_NOT_EXISTS, ErrorMessages.FILE_DO_NOT_EXISTS);
+        }
+        Node fileHolder = node.getNode(fileName);
+        fileHolder.remove();
 
     }
 
