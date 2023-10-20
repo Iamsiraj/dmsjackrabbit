@@ -29,7 +29,7 @@ public class RepositoryHelper {
         Node node = session.getNode(basePath);
 
         if (!node.hasNode(fileName)) {
-            throw new ServiceException(ErrorCode.FILE_DO_NOT_EXISTS, ErrorMessages.FILE_DO_NOT_EXISTS);
+            throw new ServiceException(ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST);
         }
 
         Node fileHolder = node.getNode(fileName);
@@ -53,7 +53,7 @@ public class RepositoryHelper {
             throws RepositoryException {
         Node node = session.getNode(basePath);
         if (!node.hasNode(fileName)) {
-            throw new ServiceException(ErrorCode.FILE_DO_NOT_EXISTS, ErrorMessages.FILE_DO_NOT_EXISTS);
+            throw new ServiceException(ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST);
         }
         Node fileHolder = node.getNode(fileName);
         fileHolder.remove();

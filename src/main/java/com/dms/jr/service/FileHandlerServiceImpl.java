@@ -132,7 +132,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         try {
             return repo.login(new SimpleCredentials(JackrabbitConstants.USER, JackrabbitConstants.PASSWORD.toCharArray()));
         } catch (RepositoryException e) {
-            throw new ServiceException(123, "123");
+            throw new ServiceException(ErrorCode.ERROR_OCCURRED_SESSION, ErrorMessages.ERROR_OCCURRED_SESSION);
         }
     }
 
