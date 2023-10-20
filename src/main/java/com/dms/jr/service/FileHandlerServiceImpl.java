@@ -7,12 +7,6 @@ import com.dms.jr.utils.ErrorCode;
 import com.dms.jr.utils.ErrorMessages;
 import com.dms.jr.utils.JackrabbitConstants;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.dbcp2.BasicDataSource;
-import org.apache.jackrabbit.oak.Oak;
-import org.apache.jackrabbit.oak.jcr.Jcr;
-import org.apache.jackrabbit.oak.plugins.document.DocumentNodeStore;
-import org.apache.jackrabbit.oak.plugins.document.rdb.RDBDocumentNodeStoreBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -30,19 +24,16 @@ import java.io.OutputStream;
 @Service
 @Slf4j
 public class FileHandlerServiceImpl implements FileHandlerService {
+    private final Repository repository;
 
-    @Value("${spring.datasource.url}")
-    private String DATASOURCE_URL;
-    @Value("${spring.datasource.username}")
-    private String DATASOURCE_USERNAME;
-
-    @Value("${spring.datasource.password}")
-    private String DATASOURCE_PASSWORD;
+    public FileHandlerServiceImpl(Repository repository) {
+        this.repository = repository;
+    }
 
     @Override
     public void uploadFile(String basePath, String fileName, MultipartFile file) {
 
-        Repository repo = getOrCreateRepository();
+        Repository repo = repository;
 
         // Create a JCR session
         Session session = getSession(repo);
@@ -62,7 +53,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     @Override
     public Resource downloadFile(String basePath, String fileName) {
-        Repository repo = getOrCreateRepository();
+        Repository repo = repository;
         Session session = getSession(repo);
 
 
@@ -88,7 +79,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     @Override
     public void deleteFile(String basePath, String fileName) {
-        Repository repo = getOrCreateRepository();
+        Repository repo = repository;
         Session session = getSession(repo);
 
         try {
@@ -136,15 +127,4 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         }
     }
 
-    private Repository getOrCreateRepository() {
-        BasicDataSource dataSource = new BasicDataSource();
-        dataSource.setUrl(DATASOURCE_URL);
-        dataSource.setUsername(DATASOURCE_USERNAME);
-        dataSource.setPassword(DATASOURCE_PASSWORD);
-
-        DocumentNodeStore store = RDBDocumentNodeStoreBuilder.newRDBDocumentNodeStoreBuilder()
-                .setRDBConnection(dataSource).build();
-
-        return new Jcr(new Oak(store)).createRepository();
-    }
 }
