@@ -1,11 +1,16 @@
-package com.dms.jr.service;
+package com.dms.jr.service.impl;
 
 import com.dms.jr.bean.FileResponse;
+import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.exceptions.ServiceException;
 import com.dms.jr.helper.RepositoryHelper;
+import com.dms.jr.model.DocumentInfo;
+import com.dms.jr.service.DocumentInfoService;
+import com.dms.jr.service.FileHandlerService;
 import com.dms.jr.utils.ErrorCode;
 import com.dms.jr.utils.ErrorMessages;
 import com.dms.jr.utils.JackrabbitConstants;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -23,27 +28,32 @@ import java.io.OutputStream;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FileHandlerServiceImpl implements FileHandlerService {
     private final Repository repository;
 
-    public FileHandlerServiceImpl(Repository repository) {
-        this.repository = repository;
-    }
+    private final DocumentInfoService documentInfoService;
+
 
     @Override
-    public void uploadFile(String basePath, String fileName, MultipartFile file) {
-
+    public void uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
+        String basePath = "/" + uploadRequestDto.getBasePath();
+        String fileName = uploadRequestDto.getFileName();
+        log.info("BasePath: {},File name : {}", basePath, fileName);
         Repository repo = repository;
 
         // Create a JCR session
         Session session = getSession(repo);
+        DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto);
 
         try {
             File newFile = convertMultipartFileToFile(fileName, file.getBytes());
             RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
         } catch (ServiceException e) {
+            documentInfoService.deleteById(documentInfo.getId());
             throw new ServiceException(e.getCode(), e.getMessage());
         } catch (RepositoryException | IOException e) {
+            documentInfoService.deleteById(documentInfo.getId());
             throw new ServiceException(ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
         }
 

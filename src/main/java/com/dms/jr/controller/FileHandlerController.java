@@ -1,8 +1,13 @@
 package com.dms.jr.controller;
 
+import com.dms.jr.dto.UploadRequestDto;
+import com.dms.jr.exceptions.ServiceException;
 import com.dms.jr.service.FileHandlerService;
+import com.dms.jr.utils.ErrorCode;
+import com.dms.jr.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,9 +25,29 @@ public class FileHandlerController {
 
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> uploadFile(@RequestBody UploadRequestDto uploadRequestDto, @RequestParam("file") MultipartFile file) {
 
-        fileHandlerService.uploadFile(basePath, fileName, file);
+        if (StringUtils.isBlank(uploadRequestDto.getFileName())) {
+            throw new ServiceException(ErrorCode.FIELD_REQUIRED, String.format(ErrorMessages.FIELD_REQUIRED, "FILE NAME"));
+        }
+
+        if (StringUtils.isBlank(uploadRequestDto.getBasePath())) {
+            throw new ServiceException(ErrorCode.FIELD_REQUIRED, String.format(ErrorMessages.FIELD_REQUIRED, "BASE PATH"));
+        }
+
+        if (StringUtils.isBlank(uploadRequestDto.getCustomerId())) {
+            throw new ServiceException(ErrorCode.FIELD_REQUIRED, String.format(ErrorMessages.FIELD_REQUIRED, "CUSTOMER ID"));
+        }
+
+        if (StringUtils.isBlank(uploadRequestDto.getDocumentType())) {
+            throw new ServiceException(ErrorCode.FIELD_REQUIRED, String.format(ErrorMessages.FIELD_REQUIRED, "DOCUMENT TYPE"));
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new ServiceException(ErrorCode.FILE_REQUIRED, ErrorMessages.FILE_REQUIRED);
+        }
+
+        fileHandlerService.uploadFile(uploadRequestDto, file);
         return ResponseEntity.ok("Ok");
     }
 
