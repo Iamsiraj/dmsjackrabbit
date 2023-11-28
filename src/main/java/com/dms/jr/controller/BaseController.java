@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class BaseController {
 
-    @GetMapping
-    public String run() {
-        return "Application is up and running";
-    }
+  @GetMapping
+  public String run() {
+    return "Application is up and running";
+  }
 }

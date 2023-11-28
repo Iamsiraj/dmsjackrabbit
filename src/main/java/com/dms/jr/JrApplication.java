@@ -7,12 +7,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import javax.jcr.RepositoryException;
 import java.io.IOException;
 
-
 @SpringBootApplication
 public class JrApplication {
 
-    public static void main(String[] args) throws InvalidFileStoreVersionException, IOException, RepositoryException {
-        SpringApplication.run(JrApplication.class, args);
-    }
-
+  public static void main(String[] args)
+      throws InvalidFileStoreVersionException, IOException, RepositoryException {
+    SpringApplication.run(JrApplication.class, args);
+  }
 }

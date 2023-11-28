@@ -15,6 +15,8 @@ public class UploadRequestDto {
 
     private String documentType;
 
+    private String documentId;
+
     private String status;
 
 }

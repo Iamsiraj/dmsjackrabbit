@@ -6,6 +6,6 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public class ServiceException extends RuntimeException {
-    private int code;
-    private String message;
+  private int code;
+  private String message;
 }

@@ -7,11 +7,11 @@ import java.util.List;
 
 public interface DocumentInfoService {
 
-    DocumentInfo getById(Integer id);
+  DocumentInfo getById(Integer id);
 
-    List<DocumentInfo> getAll();
+  List<DocumentInfo> getAll();
 
-    DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto);
+  DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto);
 
-    void deleteById(Integer id);
+  void deleteById(Integer id);
 }

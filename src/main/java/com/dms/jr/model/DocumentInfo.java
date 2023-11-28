@@ -31,6 +31,9 @@ public class DocumentInfo {
     @Column(name = "FILE_NAME")
     private String fileName;
 
+    @Column(name = "JCR_ID")
+    private String jcrId;
+
     @Column(name = "DOCUMENT_ID")
     private String documentId;
 
@@ -59,7 +62,7 @@ public class DocumentInfo {
 
     @PrePersist
     public void prePersist() {
-        this.documentId = "{jcrUuid}" + UUID.randomUUID();
+        this.jcrId = "{jcrUuid}" + UUID.randomUUID();
         this.revisionId = "{jcrRev}" + UUID.randomUUID();
         this.revisionName = "1.0";
     }
