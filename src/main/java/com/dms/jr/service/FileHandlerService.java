@@ -12,4 +12,5 @@ public interface FileHandlerService {
 
     Resource downloadFile(String basePath, String fileName);
 
+    void deleteFileByJcrId(String id);
 }

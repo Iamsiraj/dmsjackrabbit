@@ -1,5 +1,6 @@
 package com.dms.jr.controller;
 
+import com.dms.jr.dto.ResponseDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
 import com.dms.jr.exceptions.ServiceException;
@@ -44,7 +45,7 @@ public class FileHandlerController {
   public ResponseEntity<?> downloadFile(
       @RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName) {
 
-    Resource resource = null;
+    Resource resource;
     resource = fileHandlerService.downloadFile(basePath, fileName);
 
     String contentType = "application/octet-stream";
@@ -62,6 +63,13 @@ public class FileHandlerController {
 
     fileHandlerService.deleteFile(basePath, fileName);
     return ResponseEntity.ok("Ok");
+  }
+
+  @DeleteMapping("/delete")
+  public ResponseEntity<ResponseDto> deleteFileByJcrId(@RequestParam("id") String id) {
+    log.info("FileHandlerController:: deleteFileByJcrId id:{}", id);
+    fileHandlerService.deleteFileByJcrId(id);
+    return ResponseEntity.ok(ResponseDto.builder().success(Boolean.TRUE).build());
   }
 
   private UploadRequestDto convertJsonStringToUploadRequestDto(String dto) {

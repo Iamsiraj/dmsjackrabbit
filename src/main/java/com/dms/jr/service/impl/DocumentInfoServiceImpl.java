@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import javax.transaction.Transactional;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -16,16 +17,6 @@ import java.util.List;
 public class DocumentInfoServiceImpl implements DocumentInfoService {
 
   private final DocumentInfoRepository documentInfoRepository;
-
-  @Override
-  public DocumentInfo getById(Integer id) {
-    return null;
-  }
-
-  @Override
-  public List<DocumentInfo> getAll() {
-    return null;
-  }
 
   @Override
   public DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto) {
@@ -61,5 +52,26 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
   public void deleteById(Integer id) {
     log.info("DocumentInfoServiceImpl:: deleteById id:{}", id);
     documentInfoRepository.deleteById(id);
+  }
+
+  @Override
+  @Transactional
+  public DocumentInfo deleteByJcrId(String id) {
+    log.info("DocumentInfoServiceImpl:: deleteByJcrId id:{}", id);
+    Optional<DocumentInfo> optionalDocumentInfo = findByJcrId(id, false);
+
+    if (optionalDocumentInfo.isEmpty()) {
+      return null;
+    }
+
+    log.info("DocumentInfoServiceImpl:: optionalDocumentInfo.isPresent() id:{}", id);
+    DocumentInfo documentInfo = optionalDocumentInfo.get();
+    documentInfo.setIsDeleted(true);
+    return documentInfo;
+  }
+
+  private Optional<DocumentInfo> findByJcrId(String jcrId, boolean isDeleted) {
+    log.info("DocumentInfoServiceImpl:: findByJcrId id:{} and isDeleted :{}", jcrId, isDeleted);
+    return documentInfoRepository.findByJcrIdAndIsDeleted(jcrId, isDeleted);
   }
 }

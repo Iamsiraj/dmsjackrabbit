@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Objects;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -39,11 +40,10 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     String basePath = "/" + uploadRequestDto.getBasePath();
     String fileName = uploadRequestDto.getFileName();
     log.info("BasePath: {},File name : {}", basePath, fileName);
-    Repository repo = repository;
     File newFile;
 
     // Create a JCR session
-    Session session = getSession(repo);
+    Session session = getSession(repository);
     DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto);
 
     try {
@@ -72,10 +72,9 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   @Override
   public Resource downloadFile(String basePath, String fileName) {
-    Repository repo = repository;
-    Session session = getSession(repo);
+    Session session = getSession(repository);
 
-    FileResponse fileContents = null;
+    FileResponse fileContents;
     try {
       fileContents = RepositoryHelper.getFileContents(session, basePath, fileName);
     } catch (ServiceException e) {
@@ -96,12 +95,23 @@ public class FileHandlerServiceImpl implements FileHandlerService {
   }
 
   @Override
+  public void deleteFileByJcrId(String id) {
+    log.info("FileHandlerServiceImpl:: deleteFileByJcrId id:{}", id);
+    DocumentInfo documentInfo = documentInfoService.deleteByJcrId(id);
+
+    if (Objects.nonNull(documentInfo)) {
+      log.info(
+          "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
+      deleteFile(documentInfo.getBasePath(), documentInfo.getFileName());
+    }
+  }
+
+  @Override
   public void deleteFile(String basePath, String fileName) {
-    Repository repo = repository;
-    Session session = getSession(repo);
+    Session session = getSession(repository);
 
     try {
-      RepositoryHelper.removeFileContents(session, basePath, fileName);
+      RepositoryHelper.removeFileContents(session, "/" + basePath, fileName);
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (RepositoryException e) {
