@@ -70,7 +70,7 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     return documentInfo;
   }
 
-  private Optional<DocumentInfo> findByJcrId(String jcrId, boolean isDeleted) {
+  public Optional<DocumentInfo> findByJcrId(String jcrId, boolean isDeleted) {
     log.info("DocumentInfoServiceImpl:: findByJcrId id:{} and isDeleted :{}", jcrId, isDeleted);
     return documentInfoRepository.findByJcrIdAndIsDeleted(jcrId, isDeleted);
   }

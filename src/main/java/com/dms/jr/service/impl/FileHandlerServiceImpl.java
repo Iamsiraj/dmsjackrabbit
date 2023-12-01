@@ -1,6 +1,7 @@
 package com.dms.jr.service.impl;
 
 import com.dms.jr.bean.FileResponse;
+import com.dms.jr.dto.FileDownloadResponseDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
 import com.dms.jr.exceptions.ServiceException;
@@ -16,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Objects;
+import java.util.Optional;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -119,6 +121,35 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     }
     sessionSave(session);
     sessionLogout(session);
+  }
+
+  @Override
+  public FileDownloadResponseDto downloadFileByJcrId(String id) {
+    Session session = getSession(repository);
+
+    DocumentInfo documentInfo =
+        documentInfoService
+            .findByJcrId(id, Boolean.FALSE)
+            .orElseThrow(
+                () ->
+                    new ServiceException(
+                        ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST));
+
+    FileResponse fileContents;
+    try {
+      fileContents =
+          RepositoryHelper.getFileContents(
+              session, "/" + documentInfo.getBasePath(), documentInfo.getFileName());
+    } catch (ServiceException e) {
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (IOException | RepositoryException e) {
+      throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
+    }
+
+    sessionSave(session);
+
+    sessionLogout(session);
+    return FileDownloadResponseDto.builder().byteArray(fileContents.getBytes()).build();
   }
 
   private void sessionSave(Session session) {

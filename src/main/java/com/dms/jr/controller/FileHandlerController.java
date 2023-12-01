@@ -1,5 +1,6 @@
 package com.dms.jr.controller;
 
+import com.dms.jr.dto.FileDownloadResponseDto;
 import com.dms.jr.dto.ResponseDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
@@ -70,6 +71,14 @@ public class FileHandlerController {
     log.info("FileHandlerController:: deleteFileByJcrId id:{}", id);
     fileHandlerService.deleteFileByJcrId(id);
     return ResponseEntity.ok(ResponseDto.builder().success(Boolean.TRUE).build());
+  }
+
+  @GetMapping("/download-byte")
+  public ResponseEntity<FileDownloadResponseDto> downloadFileByJcr(@RequestParam("id") String id) {
+    log.info("FileHandlerController:: deleteFileByJcrId id:{}", id);
+    FileDownloadResponseDto fileDownloadResponseDto = fileHandlerService.downloadFileByJcrId(id);
+    return ResponseEntity.ok(fileDownloadResponseDto);
+
   }
 
   private UploadRequestDto convertJsonStringToUploadRequestDto(String dto) {
