@@ -1,6 +1,7 @@
 package com.dms.jr.service;
 
 import com.dms.jr.dto.FileDownloadResponseDto;
+import com.dms.jr.dto.MigrationUploadRequestDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
 import org.springframework.core.io.Resource;
@@ -16,4 +17,6 @@ public interface FileHandlerService {
   void deleteFileByJcrId(String id);
 
   FileDownloadResponseDto downloadFileByJcrId(String id);
+
+  UploadResponseDto uploadFile(MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file);
 }

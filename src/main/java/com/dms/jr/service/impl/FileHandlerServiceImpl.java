@@ -2,6 +2,7 @@ package com.dms.jr.service.impl;
 
 import com.dms.jr.bean.FileResponse;
 import com.dms.jr.dto.FileDownloadResponseDto;
+import com.dms.jr.dto.MigrationUploadRequestDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
 import com.dms.jr.exceptions.ServiceException;
@@ -9,6 +10,7 @@ import com.dms.jr.helper.RepositoryHelper;
 import com.dms.jr.model.DocumentInfo;
 import com.dms.jr.service.DocumentInfoService;
 import com.dms.jr.service.FileHandlerService;
+import com.dms.jr.util.JCRUtil;
 import com.dms.jr.utils.ErrorCode;
 import com.dms.jr.utils.ErrorMessages;
 import com.dms.jr.utils.JackrabbitConstants;
@@ -17,7 +19,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Objects;
-import java.util.Optional;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -39,7 +40,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   @Override
   public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
-    String basePath = "/" + uploadRequestDto.getBasePath();
+    String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
     String fileName = uploadRequestDto.getFileName();
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile;
@@ -113,7 +114,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     Session session = getSession(repository);
 
     try {
-      RepositoryHelper.removeFileContents(session, "/" + basePath, fileName);
+      RepositoryHelper.removeFileContents(session, JCRUtil.generateBasePath(basePath), fileName);
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (RepositoryException e) {
@@ -150,6 +151,42 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     sessionLogout(session);
     return FileDownloadResponseDto.builder().byteArray(fileContents.getBytes()).build();
+  }
+
+  @Override
+  public UploadResponseDto uploadFile(
+      MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
+    String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
+    String fileName = migrationUploadRequestDto.getFileName();
+    log.info("BasePath: {},File name : {}", basePath, fileName);
+    File newFile;
+
+    // Create a JCR session
+    Session session = getSession(repository);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto);
+
+    try {
+      newFile = convertMultipartFileToFile(fileName, file.getBytes());
+      RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+    } catch (ServiceException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (RepositoryException | IOException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(
+          ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+    }
+
+    sessionSave(session);
+    sessionLogout(session);
+
+    return UploadResponseDto.builder()
+        .jcrId(documentInfo.getJcrId())
+        .revId(documentInfo.getRevisionId())
+        .fileName(documentInfo.getFileName())
+        .size(String.valueOf(newFile.getTotalSpace()))
+        .revision(documentInfo.getRevisionName())
+        .build();
   }
 
   private void sessionSave(Session session) {

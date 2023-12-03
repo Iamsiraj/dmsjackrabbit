@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UploadRequestDto {
+public class MigrationUploadRequestDto {
 
   private String customerId;
 
@@ -18,4 +18,9 @@ public class UploadRequestDto {
   private String documentId;
 
   private String status;
+
+  private String jcrId;
+  private String revId;
+
+  private String revName;
 }

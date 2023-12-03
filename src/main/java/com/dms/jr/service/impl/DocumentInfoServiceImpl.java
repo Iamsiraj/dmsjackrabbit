@@ -1,9 +1,11 @@
 package com.dms.jr.service.impl;
 
+import com.dms.jr.dto.MigrationUploadRequestDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.model.DocumentInfo;
 import com.dms.jr.repository.DocumentInfoRepository;
 import com.dms.jr.service.DocumentInfoService;
+import com.dms.jr.util.JCRUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,36 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     return save(documentInfo);
   }
 
+  @Override
+  public DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto) {
+    log.info(
+        "DocumentInfoServiceImpl:: saveDocumentInfo Document Name :{}"
+            + migrationUploadRequestDto.getBasePath()
+            + migrationUploadRequestDto.getFileName());
+    DocumentInfo documentInfo = mapUploadRequestDtoToDocumentInfo(migrationUploadRequestDto);
+
+    return save(documentInfo);
+  }
+
+  private DocumentInfo mapUploadRequestDtoToDocumentInfo(
+      MigrationUploadRequestDto migrationUploadRequestDto) {
+    log.info("DocumentInfoServiceImpl:: mapUploadRequestDtoToDocumentInfo");
+    if (migrationUploadRequestDto == null) {
+      return null;
+    }
+    DocumentInfo documentInfo = new DocumentInfo();
+    documentInfo.setCustomerId(migrationUploadRequestDto.getCustomerId());
+    documentInfo.setBasePath(migrationUploadRequestDto.getBasePath());
+    documentInfo.setFileName(migrationUploadRequestDto.getFileName());
+    documentInfo.setDocumentType(migrationUploadRequestDto.getDocumentType());
+    documentInfo.setStatus(migrationUploadRequestDto.getStatus());
+    documentInfo.setDocumentId(migrationUploadRequestDto.getDocumentId());
+    documentInfo.setJcrId(migrationUploadRequestDto.getJcrId());
+    documentInfo.setRevisionId(migrationUploadRequestDto.getRevId());
+    documentInfo.setRevisionName(migrationUploadRequestDto.getRevName());
+    return documentInfo;
+  }
+
   private DocumentInfo save(DocumentInfo documentInfo) {
     return documentInfoRepository.save(documentInfo);
   }
@@ -45,6 +77,8 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     documentInfo.setDocumentType(uploadRequestDto.getDocumentType());
     documentInfo.setStatus(uploadRequestDto.getStatus());
     documentInfo.setDocumentId(uploadRequestDto.getDocumentId());
+    documentInfo.setJcrId(JCRUtil.generateJCRId());
+    documentInfo.setRevisionId(JCRUtil.generateJCRRevId());
     return documentInfo;
   }
 
