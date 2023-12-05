@@ -1,7 +1,6 @@
 package com.dms.jr.service.impl;
 
 import com.dms.jr.bean.FileResponse;
-import com.dms.jr.dto.FileDownloadResponseDto;
 import com.dms.jr.dto.MigrationUploadRequestDto;
 import com.dms.jr.dto.UploadRequestDto;
 import com.dms.jr.dto.UploadResponseDto;
@@ -125,7 +124,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
   }
 
   @Override
-  public FileDownloadResponseDto downloadFileByJcrId(String id) {
+  public byte[] downloadFileByJcrId(String id) {
     log.info("FileHandlerServiceImpl:: downloadFileByJcrId id:{}", id);
     Session session = getSession(repository);
 
@@ -151,7 +150,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     sessionSave(session);
 
     sessionLogout(session);
-    return FileDownloadResponseDto.builder().byteArray(fileContents.getBytes()).build();
+    return fileContents.getBytes();
   }
 
   @Override
