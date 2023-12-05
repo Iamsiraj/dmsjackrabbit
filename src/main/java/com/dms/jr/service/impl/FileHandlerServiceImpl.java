@@ -126,6 +126,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   @Override
   public FileDownloadResponseDto downloadFileByJcrId(String id) {
+    log.info("FileHandlerServiceImpl:: downloadFileByJcrId id:{}", id);
     Session session = getSession(repository);
 
     DocumentInfo documentInfo =
@@ -156,6 +157,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
   @Override
   public UploadResponseDto uploadFile(
       MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
+    log.info("FileHandlerServiceImpl:: uploadFile ");
+
     String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
     String fileName = migrationUploadRequestDto.getFileName();
     log.info("BasePath: {},File name : {}", basePath, fileName);
