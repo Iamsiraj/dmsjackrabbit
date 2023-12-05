@@ -75,7 +75,7 @@ public class FileHandlerController {
 
   @GetMapping("/download-byte")
   public ResponseEntity<FileDownloadResponseDto> downloadFileByJcr(@RequestParam("id") String id) {
-    log.info("FileHandlerController:: deleteFileByJcrId id:{}", id);
+    log.info("FileHandlerController:: downloadFileByJcr id:{}", id);
     FileDownloadResponseDto fileDownloadResponseDto = fileHandlerService.downloadFileByJcrId(id);
     return ResponseEntity.ok(fileDownloadResponseDto);
 
