@@ -9,7 +9,7 @@ public class JCRUtil {
   }
 
   public static String generateJCRRevId() {
-    return "{jcrUuid}" + UUID.randomUUID();
+    return "{jcrRev}" + UUID.randomUUID();
   }
 
   public static String generateBasePath(String basePath) {

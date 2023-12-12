@@ -41,6 +41,20 @@ public class FileHandlerController {
     return ResponseEntity.ok(uploadResponseDto);
   }
 
+  @PostMapping("/upload-client")
+  public ResponseEntity<String> uploadFileFromClient(
+      @RequestPart("dto") String dto, @RequestPart("file") MultipartFile file) {
+
+    UploadRequestDto uploadRequestDto = convertJsonStringToUploadRequestDto(dto);
+
+    validateUploadRequestDto(uploadRequestDto);
+
+    validateMutlipartFile(file);
+
+    UploadResponseDto uploadResponseDto = fileHandlerService.uploadFile(uploadRequestDto, file);
+    return ResponseEntity.ok(uploadResponseDto.toString());
+  }
+
   @GetMapping("/download")
   public ResponseEntity<?> downloadFile(
       @RequestParam("basePath") String basePath, @RequestParam("fileName") String fileName) {
