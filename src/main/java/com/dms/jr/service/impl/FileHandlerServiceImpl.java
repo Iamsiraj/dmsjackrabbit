@@ -134,7 +134,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     if (Objects.nonNull(documentInfo)) {
       log.info(
           "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
-      deleteFile(generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
+      deleteFile(generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()), documentInfo.getVersion()), documentInfo.getFileName());
     }
   }
 
@@ -170,7 +170,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       fileContents =
           RepositoryHelper.getFileContents(
-              session, generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
+              session, generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
+                          documentInfo.getVersion()), documentInfo.getFileName());
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (IOException | RepositoryException e) {

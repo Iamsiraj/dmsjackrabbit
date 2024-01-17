@@ -7,6 +7,7 @@ import com.dms.jr.enums.NodeType;
 import com.dms.jr.exceptions.ServiceException;
 import com.dms.jr.utils.ErrorCode;
 import com.dms.jr.utils.ErrorMessages;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -22,6 +23,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 public class RepositoryHelper {
 
   public static FileResponse getFileContents(Session session, String basePath, String fileName)
@@ -31,7 +33,7 @@ public class RepositoryHelper {
     if (!node.hasNode(fileName)) {
       throw new ServiceException(ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST);
     }
-
+    log.info("FileResponse::getFileContents :: basePath :: {} , fileName :: {}",basePath,fileName);
     Node fileHolder = node.getNode(fileName);
     Node fileContent = fileHolder.getNode("theFile").getNode("jcr:content");
     Binary bin = fileContent.getProperty("jcr:data").getBinary();
@@ -50,6 +52,8 @@ public class RepositoryHelper {
   public static void removeFileContents(Session session, String basePath, String fileName)
       throws RepositoryException {
     Node node = session.getNode(basePath);
+    log.info("FileResponse::removeFileContents :: basePath :: {} , fileName :: {}",basePath,fileName);
+
     if (!node.hasNode(fileName)) {
       throw new ServiceException(ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST);
     }
@@ -97,6 +101,8 @@ public class RepositoryHelper {
 
   public static void addFileNode(Session session, String absPath, File file, String userName)
       throws RepositoryException, IOException {
+
+    log.info("FileResponse::addFileNode :: absPath :: {} , fileName :: {}",absPath,file.getName());
 
     Node node = createNodes(session, absPath);
     if (node.hasNode(file.getName())) {

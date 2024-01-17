@@ -58,7 +58,7 @@ public class DocumentInfo {
   @Column(name = "UPDATED_AT")
   private Date updatedAt;
 
-  @Column(name ="Version")
+  @Column(name ="VERSION")
   private Long version;
   @PrePersist
   public void prePersist() {
