@@ -7,6 +7,7 @@ import com.dms.jr.dto.UploadResponseDto;
 import com.dms.jr.exceptions.ServiceException;
 import com.dms.jr.helper.RepositoryHelper;
 import com.dms.jr.model.DocumentInfo;
+import com.dms.jr.repository.DocumentInfoRepository;
 import com.dms.jr.service.DocumentInfoService;
 import com.dms.jr.service.FileHandlerService;
 import com.dms.jr.util.JCRUtil;
@@ -21,12 +22,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.Optional;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -40,20 +43,35 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   private final DocumentInfoService documentInfoService;
 
+  @Autowired
+  private DocumentInfoRepository documentInfoRepository;
   @Override
   public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
+    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(uploadRequestDto.getBasePath(),uploadRequestDto.getFileName());
     String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
     String fileName = uploadRequestDto.getFileName();
+//    if(optionalDoc.isPresent()) {
+//      newVersion = optionalDoc.get().getVersion() != null ? optionalDoc.get().getVersion() + 1 : 1;
+//      String path = uploadRequestDto.getBasePath() +"/v" + newVersion;
+//      basePath = JCRUtil.generateBasePath(path);
+//      optionalDoc.get().setVersion(newVersion);
+//      documentInfoRepository.save(optionalDoc.get());
+//    } else {
+//      basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
+//    }
+
+    Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+
+
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile;
 
     // Create a JCR session
     Session session = getSession(repository);
-    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto);
-
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto, version);
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
-      RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
       Path filePath = Paths.get(newFile.getAbsolutePath());
       Files.delete(filePath);
       log.info("Local file deleted successfully.");
@@ -79,7 +97,11 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         .build();
   }
 
-  @Override
+    private static String generatePathWithVersion(String basePath, Long version) {
+        return basePath + "/v" + version;
+    }
+
+    @Override
   public Resource downloadFile(String basePath, String fileName) {
     Session session = getSession(repository);
 
@@ -112,7 +134,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     if (Objects.nonNull(documentInfo)) {
       log.info(
           "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
-      deleteFile(documentInfo.getBasePath(), documentInfo.getFileName());
+      deleteFile(generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
     }
   }
 
@@ -148,7 +170,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       fileContents =
           RepositoryHelper.getFileContents(
-              session, "/" + documentInfo.getBasePath(), documentInfo.getFileName());
+              session, generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (IOException | RepositoryException e) {
@@ -166,18 +188,35 @@ public class FileHandlerServiceImpl implements FileHandlerService {
           MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
     log.info("FileHandlerServiceImpl:: uploadFile ");
 
-    String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
-    String fileName = migrationUploadRequestDto.getFileName();
+//    String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
+//    String fileName = migrationUploadRequestDto.getFileName();
+      String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
+      String fileName = migrationUploadRequestDto.getFileName();
+    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
+//    String basePath = "";
+//    String fileName = migrationUploadRequestDto.getFileName();
+//    Long newVersion = 1L;
+//    if(optionalDoc.isPresent()) {
+//      newVersion = optionalDoc.get().getVersion() != null ? optionalDoc.get().getVersion() + 1 : 1;
+//      String path = generatePathWithVersion(migrationUploadRequestDto.getBasePath(), newVersion);
+//      basePath = JCRUtil.generateBasePath(path);
+//      optionalDoc.get().setVersion(newVersion);
+//      documentInfoRepository.save(optionalDoc.get());
+//    } else {
+//      basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
+//    }
+      Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile;
 
     // Create a JCR session
     Session session = getSession(repository);
-    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto, version);
 
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
-      RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session,  generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
       Path filePath = Paths.get(newFile.getAbsolutePath());
       Files.delete(filePath);
       log.info("Local file deleted successfully.");
