@@ -18,9 +18,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Optional;
 import javax.jcr.Repository;
@@ -39,219 +36,225 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @RequiredArgsConstructor
 public class FileHandlerServiceImpl implements FileHandlerService {
-    private final Repository repository;
+  private final Repository repository;
 
-    private final DocumentInfoService documentInfoService;
+  private final DocumentInfoService documentInfoService;
 
-    @Autowired
-    private DocumentInfoRepository documentInfoRepository;
+  @Autowired
+  private DocumentInfoRepository documentInfoRepository;
 
-    @Override
-    public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
-        Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(uploadRequestDto.getBasePath(), uploadRequestDto.getFileName());
-        String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
-        String fileName = uploadRequestDto.getFileName();
-        Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
-        log.info("BasePath: {},File name : {}", basePath, fileName);
-        File newFile;
+  @Override
+  public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
+    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(uploadRequestDto.getBasePath(), uploadRequestDto.getFileName());
+    String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
+    String fileName = uploadRequestDto.getFileName();
+    Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+    log.info("BasePath: {},File name : {}", basePath, fileName);
+    File newFile = null;
+    Long totalSpace;
 
-        // Create a JCR session
-        Session session = getSession(repository);
-        DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto, version);
-        try {
-            newFile = convertMultipartFileToFile(fileName, file.getBytes());
-            RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
-            Path filePath = Paths.get(newFile.getAbsolutePath());
-            Files.delete(filePath);
-            log.info("Local file deleted successfully.");
-        } catch (ServiceException e) {
-            documentInfoService.deleteById(documentInfo.getId());
-            throw new ServiceException(e.getCode(), e.getMessage());
-        } catch (RepositoryException | IOException e) {
-            documentInfoService.deleteById(documentInfo.getId());
-            throw new ServiceException(
-                    ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
-        }
-        newFile.deleteOnExit();
+    // Create a JCR session
+    Session session = getSession(repository);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto, version);
 
-        sessionSave(session);
-        sessionLogout(session);
-
-        return UploadResponseDto.builder()
-                .jcrId(documentInfo.getJcrId())
-                .revId(documentInfo.getRevisionId())
-                .fileName(documentInfo.getFileName())
-                .size(String.valueOf(newFile.getTotalSpace()))
-                .revision(documentInfo.getRevisionName())
-                .build();
+    try {
+      newFile = convertMultipartFileToFile(fileName, file.getBytes());
+      totalSpace = newFile.getTotalSpace();
+      RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
+    } catch (ServiceException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (RepositoryException | IOException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(
+          ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+    } finally {
+      newFile.delete();
+      log.info("Local file deleted successfully.");
     }
 
-    private static String generatePathWithVersion(String basePath, Long version) {
-        return basePath + "/v" + version;
+    sessionSave(session);
+    sessionLogout(session);
+
+    return UploadResponseDto.builder()
+        .jcrId(documentInfo.getJcrId())
+        .revId(documentInfo.getRevisionId())
+        .fileName(documentInfo.getFileName())
+        .size(String.valueOf(totalSpace))
+        .revision(documentInfo.getRevisionName())
+        .build();
+  }
+
+  private static String generatePathWithVersion(String basePath, Long version) {
+    return basePath + "/v" + version;
+  }
+
+  @Override
+  public Resource downloadFile(String basePath, String fileName) {
+    Session session = getSession(repository);
+
+    FileResponse fileContents;
+    try {
+      fileContents = RepositoryHelper.getFileContents(session, basePath, fileName);
+    } catch (ServiceException e) {
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (IOException | RepositoryException e) {
+      throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
     }
 
-    @Override
-    public Resource downloadFile(String basePath, String fileName) {
-        Session session = getSession(repository);
-
-        FileResponse fileContents;
-        try {
-            fileContents = RepositoryHelper.getFileContents(session, basePath, fileName);
-        } catch (ServiceException e) {
-            throw new ServiceException(e.getCode(), e.getMessage());
-        } catch (IOException | RepositoryException e) {
-            throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
-        }
-
-        File newFile = convertMultipartFileToFile(fileName, fileContents.getBytes());
+    File newFile = convertMultipartFileToFile(fileName, fileContents.getBytes());
 
 
-        Resource resource = new FileSystemResource(newFile);
+    Resource resource = new FileSystemResource(newFile);
 
-        sessionSave(session);
+    sessionSave(session);
 
-        sessionLogout(session);
+    sessionLogout(session);
 
-        return resource;
+    return resource;
+  }
+
+  @Override
+  public void deleteFileByJcrId(String id) {
+    log.info("FileHandlerServiceImpl:: deleteFileByJcrId id:{}", id);
+    DocumentInfo documentInfo = documentInfoService.deleteByJcrId(id);
+
+    if (Objects.nonNull(documentInfo)) {
+      log.info(
+          "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
+      deleteFile(generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
+    }
+  }
+
+  @Override
+  public void deleteFile(String basePath, String fileName) {
+    Session session = getSession(repository);
+
+    try {
+      RepositoryHelper.removeFileContents(session, JCRUtil.generateBasePath(basePath), fileName);
+    } catch (ServiceException e) {
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (RepositoryException e) {
+      throw new ServiceException(ErrorCode.FILE_DELETE_ERROR, ErrorMessages.FILE_DELETE_ERROR);
+    }
+    sessionSave(session);
+    sessionLogout(session);
+  }
+
+  @Override
+  public byte[] downloadFileByJcrId(String id) {
+    log.info("FileHandlerServiceImpl:: downloadFileByJcrId id:{}", id);
+    Session session = getSession(repository);
+
+    DocumentInfo documentInfo =
+        documentInfoService
+            .findByJcrId(id, Boolean.FALSE)
+            .orElseThrow(
+                () ->
+                    new ServiceException(
+                        ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST));
+
+    FileResponse fileContents;
+    try {
+      fileContents =
+          RepositoryHelper.getFileContents(
+              session, generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
+                          documentInfo.getVersion()), documentInfo.getFileName());
+    } catch (ServiceException e) {
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (IOException | RepositoryException e) {
+      throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
     }
 
-    @Override
-    public void deleteFileByJcrId(String id) {
-        log.info("FileHandlerServiceImpl:: deleteFileByJcrId id:{}", id);
-        DocumentInfo documentInfo = documentInfoService.deleteByJcrId(id);
+    sessionSave(session);
 
-        if (Objects.nonNull(documentInfo)) {
-            log.info(
-                    "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
-            deleteFile(generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
-        }
+    sessionLogout(session);
+    return fileContents.getBytes();
+  }
+
+  @Override
+  public UploadResponseDto uploadFile(
+      MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
+    log.info("FileHandlerServiceImpl:: uploadFile ");
+
+    String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
+    String fileName = migrationUploadRequestDto.getFileName();
+
+    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
+    Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+
+
+    log.info("BasePath: {},File name : {}", basePath, fileName);
+    File newFile = null;
+    Long totalSpace;
+
+    // Create a JCR session
+    Session session = getSession(repository);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto, version);
+
+    try {
+      newFile = convertMultipartFileToFile(fileName, file.getBytes());
+      totalSpace = newFile.getTotalSpace();
+      RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
+    } catch (ServiceException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(e.getCode(), e.getMessage());
+    } catch (RepositoryException | IOException e) {
+      documentInfoService.deleteById(documentInfo.getId());
+      throw new ServiceException(
+          ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+    } finally {
+      newFile.delete();
+      log.info("Local file deleted successfully.");
     }
 
-    @Override
-    public void deleteFile(String basePath, String fileName) {
-        Session session = getSession(repository);
+    sessionSave(session);
+    sessionLogout(session);
 
-        try {
-            RepositoryHelper.removeFileContents(session, JCRUtil.generateBasePath(basePath), fileName);
-        } catch (ServiceException e) {
-            throw new ServiceException(e.getCode(), e.getMessage());
-        } catch (RepositoryException e) {
-            throw new ServiceException(ErrorCode.FILE_DELETE_ERROR, ErrorMessages.FILE_DELETE_ERROR);
-        }
-        sessionSave(session);
-        sessionLogout(session);
+    return UploadResponseDto.builder()
+        .jcrId(documentInfo.getJcrId())
+        .revId(documentInfo.getRevisionId())
+        .fileName(documentInfo.getFileName())
+        .size(String.valueOf(totalSpace))
+        .revision(documentInfo.getRevisionName())
+        .build();
+  }
+
+  private void sessionSave(Session session) {
+    try {
+      session.save();
+    } catch (RepositoryException e) {
+      throw new ServiceException(123, "123");
     }
+    System.out.println("Session Save");
+  }
 
-    @Override
-    public byte[] downloadFileByJcrId(String id) {
-        log.info("FileHandlerServiceImpl:: downloadFileByJcrId id:{}", id);
-        Session session = getSession(repository);
+  private File convertMultipartFileToFile(String fileName, byte[] fileByteArray) {
+    File newFile = new File(fileName);
 
-        DocumentInfo documentInfo =
-                documentInfoService
-                        .findByJcrId(id, Boolean.FALSE)
-                        .orElseThrow(
-                                () ->
-                                        new ServiceException(
-                                                ErrorCode.FILE_DOES_NOT_EXIST, ErrorMessages.FILE_DOES_NOT_EXIST));
-
-        FileResponse fileContents;
-        try {
-            fileContents =
-                    RepositoryHelper.getFileContents(
-                            session, generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
-                                    documentInfo.getVersion()), documentInfo.getFileName());
-        } catch (ServiceException e) {
-            throw new ServiceException(e.getCode(), e.getMessage());
-        } catch (IOException | RepositoryException e) {
-            throw new ServiceException(ErrorCode.FILE_DOWNLOAD, ErrorMessages.FILE_DOWNLOAD);
-        }
-
-        sessionSave(session);
-
-        sessionLogout(session);
-        return fileContents.getBytes();
+    try (OutputStream os = new FileOutputStream(newFile)) {
+      os.write(fileByteArray);
+    } catch (IOException e) {
+      log.error("convertMultipartFileToFile :: Error occurred : {}", e.getMessage());
+      throw new ServiceException(
+          ErrorCode.ERROR_OCCURRED_MULTIPART_FILE, ErrorMessages.ERROR_OCCURRED_MULTIPART_FILE);
     }
+    return newFile;
+  }
 
-    @Override
-    public UploadResponseDto uploadFile(
-            MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
-        log.info("FileHandlerServiceImpl:: uploadFile ");
+  private void sessionLogout(Session session) {
+    session.logout();
+    System.out.println("Session Logout");
+  }
 
-        String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
-        String fileName = migrationUploadRequestDto.getFileName();
-        Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
-        Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
-
-        log.info("BasePath: {},File name : {}", basePath, fileName);
-        File newFile;
-
-        // Create a JCR session
-        Session session = getSession(repository);
-        DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto, version);
-
-        try {
-            newFile = convertMultipartFileToFile(fileName, file.getBytes());
-            RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
-            Path filePath = Paths.get(newFile.getAbsolutePath());
-            Files.delete(filePath);
-            log.info("Local file deleted successfully.");
-        } catch (ServiceException e) {
-            documentInfoService.deleteById(documentInfo.getId());
-            throw new ServiceException(e.getCode(), e.getMessage());
-        } catch (RepositoryException | IOException e) {
-            documentInfoService.deleteById(documentInfo.getId());
-            throw new ServiceException(
-                    ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
-        }
-
-        sessionSave(session);
-        sessionLogout(session);
-
-        return UploadResponseDto.builder()
-                .jcrId(documentInfo.getJcrId())
-                .revId(documentInfo.getRevisionId())
-                .fileName(documentInfo.getFileName())
-                .size(String.valueOf(newFile.getTotalSpace()))
-                .revision(documentInfo.getRevisionName())
-                .build();
+  private Session getSession(Repository repo) {
+    try {
+      return repo.login(
+          new SimpleCredentials(
+              JackrabbitConstants.USER, JackrabbitConstants.PASSWORD.toCharArray()));
+    } catch (RepositoryException e) {
+      throw new ServiceException(
+          ErrorCode.ERROR_OCCURRED_SESSION, ErrorMessages.ERROR_OCCURRED_SESSION);
     }
-
-    private void sessionSave(Session session) {
-        try {
-            session.save();
-        } catch (RepositoryException e) {
-            throw new ServiceException(123, "123");
-        }
-        System.out.println("Session Save");
-    }
-
-    private File convertMultipartFileToFile(String fileName, byte[] fileByteArray) {
-        File newFile = new File(fileName);
-
-        try (OutputStream os = new FileOutputStream(newFile)) {
-            os.write(fileByteArray);
-        } catch (IOException e) {
-            log.error("convertMultipartFileToFile :: Error occurred : {}", e.getMessage());
-            throw new ServiceException(
-                    ErrorCode.ERROR_OCCURRED_MULTIPART_FILE, ErrorMessages.ERROR_OCCURRED_MULTIPART_FILE);
-        }
-        return newFile;
-    }
-
-    private void sessionLogout(Session session) {
-        session.logout();
-        System.out.println("Session Logout");
-    }
-
-    private Session getSession(Repository repo) {
-        try {
-            return repo.login(
-                    new SimpleCredentials(
-                            JackrabbitConstants.USER, JackrabbitConstants.PASSWORD.toCharArray()));
-        } catch (RepositoryException e) {
-            throw new ServiceException(
-                    ErrorCode.ERROR_OCCURRED_SESSION, ErrorMessages.ERROR_OCCURRED_SESSION);
-        }
-    }
+  }
 }

@@ -60,6 +60,7 @@ public class DocumentInfo {
 
   @Column(name ="VERSION")
   private Long version;
+
   @PrePersist
   public void prePersist() {
     this.revisionName = "1.0";

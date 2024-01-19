@@ -67,8 +67,7 @@ public class FileHandlerController {
 
     return ResponseEntity.ok()
         .contentType(MediaType.parseMediaType(contentType))
-        .header(HttpHeaders.CONTENT_DISPOSITION
-                , headerValue)
+        .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
         .body(resource);
   }
 
