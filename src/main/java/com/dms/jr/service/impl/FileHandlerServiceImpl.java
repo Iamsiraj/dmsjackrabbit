@@ -40,15 +40,13 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   private final DocumentInfoService documentInfoService;
 
-  @Autowired
-  private DocumentInfoRepository documentInfoRepository;
 
   @Override
   public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
-    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(uploadRequestDto.getBasePath(), uploadRequestDto.getFileName());
+    Optional<DocumentInfo> optionalDoc = documentInfoService.findLatestDocByBasePathAndFileName(uploadRequestDto.getBasePath(), uploadRequestDto.getFileName());
     String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
     String fileName = uploadRequestDto.getFileName();
-    Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+    Long version = JCRUtil.getVersion(optionalDoc);
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile = null;
     Long totalSpace;
@@ -60,7 +58,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
       totalSpace = newFile.getTotalSpace();
-      RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session, JCRUtil.generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
     } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());
@@ -83,10 +81,6 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         .size(String.valueOf(totalSpace))
         .revision(documentInfo.getRevisionName())
         .build();
-  }
-
-  private static String generatePathWithVersion(String basePath, Long version) {
-    return basePath + "/v" + version;
   }
 
   @Override
@@ -122,7 +116,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     if (Objects.nonNull(documentInfo)) {
       log.info(
           "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
-      deleteFile(generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
+      deleteFile(JCRUtil.generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
     }
   }
 
@@ -158,7 +152,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       fileContents =
           RepositoryHelper.getFileContents(
-              session, generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
+              session, JCRUtil.generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
                           documentInfo.getVersion()), documentInfo.getFileName());
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
@@ -180,8 +174,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
     String fileName = migrationUploadRequestDto.getFileName();
 
-    Optional<DocumentInfo> optionalDoc = documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
-    Long version = optionalDoc.map(documentInfo -> documentInfo.getVersion() + 1).orElse(1L);
+    Optional<DocumentInfo> optionalDoc = documentInfoService.findLatestDocByBasePathAndFileName(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
+    Long version = JCRUtil.getVersion(optionalDoc);
 
 
     log.info("BasePath: {},File name : {}", basePath, fileName);
@@ -195,7 +189,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
       totalSpace = newFile.getTotalSpace();
-      RepositoryHelper.addFileNode(session, generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session, JCRUtil.generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
     } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());

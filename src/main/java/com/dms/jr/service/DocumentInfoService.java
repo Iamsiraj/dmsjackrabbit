@@ -17,4 +17,7 @@ public interface DocumentInfoService {
   Optional<DocumentInfo> findByJcrId(String jcrId, boolean isDeleted);
 
   DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto, Long latestVersion);
+
+  Optional<DocumentInfo> findLatestDocByBasePathAndFileName(String basePath, String fileName);
+
 }

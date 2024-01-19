@@ -42,6 +42,11 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     return save(documentInfo);
   }
 
+  @Override
+  public Optional<DocumentInfo> findLatestDocByBasePathAndFileName(String basePath, String fileName) {
+    return documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(basePath, fileName);
+  }
+
   private DocumentInfo mapUploadRequestDtoToDocumentInfo(
       MigrationUploadRequestDto migrationUploadRequestDto, Long latestVersion) {
     log.info("DocumentInfoServiceImpl:: mapUploadRequestDtoToDocumentInfo");
