@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface DocumentInfoService {
 
-  DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto);
+  DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto, Long lastestVersion);
 
   void deleteById(Integer id);
 
@@ -16,5 +16,8 @@ public interface DocumentInfoService {
 
   Optional<DocumentInfo> findByJcrId(String jcrId, boolean isDeleted);
 
-  DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto);
+  DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto, Long latestVersion);
+
+  Optional<DocumentInfo> findLatestDocByBasePathAndFileName(String basePath, String fileName);
+
 }

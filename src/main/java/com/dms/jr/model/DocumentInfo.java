@@ -58,6 +58,9 @@ public class DocumentInfo {
   @Column(name = "UPDATED_AT")
   private Date updatedAt;
 
+  @Column(name ="VERSION")
+  private Long version;
+
   @PrePersist
   public void prePersist() {
     this.revisionName = "1.0";

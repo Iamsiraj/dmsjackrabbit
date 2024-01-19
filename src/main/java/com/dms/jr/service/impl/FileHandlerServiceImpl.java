@@ -7,6 +7,7 @@ import com.dms.jr.dto.UploadResponseDto;
 import com.dms.jr.exceptions.ServiceException;
 import com.dms.jr.helper.RepositoryHelper;
 import com.dms.jr.model.DocumentInfo;
+import com.dms.jr.repository.DocumentInfoRepository;
 import com.dms.jr.service.DocumentInfoService;
 import com.dms.jr.service.FileHandlerService;
 import com.dms.jr.util.JCRUtil;
@@ -18,12 +19,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Objects;
+import java.util.Optional;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -37,22 +40,25 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   private final DocumentInfoService documentInfoService;
 
+
   @Override
   public UploadResponseDto uploadFile(UploadRequestDto uploadRequestDto, MultipartFile file) {
+    Optional<DocumentInfo> optionalDoc = documentInfoService.findLatestDocByBasePathAndFileName(uploadRequestDto.getBasePath(), uploadRequestDto.getFileName());
     String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
     String fileName = uploadRequestDto.getFileName();
+    Long version = JCRUtil.getVersion(optionalDoc);
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile = null;
     Long totalSpace;
 
     // Create a JCR session
     Session session = getSession(repository);
-    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(uploadRequestDto, version);
 
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
       totalSpace = newFile.getTotalSpace();
-      RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session, JCRUtil.generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
     } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());
@@ -110,7 +116,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     if (Objects.nonNull(documentInfo)) {
       log.info(
           "FileHandlerServiceImpl:: deleteFileByJcrId deleting document from Jackrabbit id:{}", id);
-      deleteFile(documentInfo.getBasePath(), documentInfo.getFileName());
+      deleteFile(JCRUtil.generatePathWithVersion(documentInfo.getBasePath(), documentInfo.getVersion()), documentInfo.getFileName());
     }
   }
 
@@ -146,7 +152,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     try {
       fileContents =
           RepositoryHelper.getFileContents(
-              session, "/" + documentInfo.getBasePath(), documentInfo.getFileName());
+              session, JCRUtil.generatePathWithVersion(JCRUtil.generateBasePath(documentInfo.getBasePath()),
+                          documentInfo.getVersion()), documentInfo.getFileName());
     } catch (ServiceException e) {
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (IOException | RepositoryException e) {
@@ -166,18 +173,23 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
     String fileName = migrationUploadRequestDto.getFileName();
+
+    Optional<DocumentInfo> optionalDoc = documentInfoService.findLatestDocByBasePathAndFileName(migrationUploadRequestDto.getBasePath(), migrationUploadRequestDto.getFileName());
+    Long version = JCRUtil.getVersion(optionalDoc);
+
+
     log.info("BasePath: {},File name : {}", basePath, fileName);
     File newFile = null;
     Long totalSpace;
 
     // Create a JCR session
     Session session = getSession(repository);
-    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto);
+    DocumentInfo documentInfo = documentInfoService.saveDocumentInfo(migrationUploadRequestDto, version);
 
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
       totalSpace = newFile.getTotalSpace();
-      RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
+      RepositoryHelper.addFileNode(session, JCRUtil.generatePathWithVersion(basePath, version), newFile, JackrabbitConstants.USER);
     } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());

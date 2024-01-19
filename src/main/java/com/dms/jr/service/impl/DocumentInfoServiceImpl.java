@@ -21,29 +21,34 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
   private final DocumentInfoRepository documentInfoRepository;
 
   @Override
-  public DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto) {
+  public DocumentInfo saveDocumentInfo(UploadRequestDto uploadRequestDto, Long latestVersion) {
     log.info(
         "DocumentInfoServiceImpl:: saveDocumentInfo Document Name :{}"
             + uploadRequestDto.getBasePath()
             + uploadRequestDto.getFileName());
-    DocumentInfo documentInfo = mapUploadRequestDtoToDocumentInfo(uploadRequestDto);
+    DocumentInfo documentInfo = mapUploadRequestDtoToDocumentInfo(uploadRequestDto, latestVersion);
 
     return save(documentInfo);
   }
 
   @Override
-  public DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto) {
+  public DocumentInfo saveDocumentInfo(MigrationUploadRequestDto migrationUploadRequestDto, Long latestVersion) {
     log.info(
         "DocumentInfoServiceImpl:: saveDocumentInfo Document Name :{}"
             + migrationUploadRequestDto.getBasePath()
             + migrationUploadRequestDto.getFileName());
-    DocumentInfo documentInfo = mapUploadRequestDtoToDocumentInfo(migrationUploadRequestDto);
+    DocumentInfo documentInfo = mapUploadRequestDtoToDocumentInfo(migrationUploadRequestDto, latestVersion);
 
     return save(documentInfo);
   }
 
+  @Override
+  public Optional<DocumentInfo> findLatestDocByBasePathAndFileName(String basePath, String fileName) {
+    return documentInfoRepository.findFirstByBasePathAndFileNameOrderByVersionDesc(basePath, fileName);
+  }
+
   private DocumentInfo mapUploadRequestDtoToDocumentInfo(
-      MigrationUploadRequestDto migrationUploadRequestDto) {
+      MigrationUploadRequestDto migrationUploadRequestDto, Long latestVersion) {
     log.info("DocumentInfoServiceImpl:: mapUploadRequestDtoToDocumentInfo");
     if (migrationUploadRequestDto == null) {
       return null;
@@ -58,6 +63,7 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     documentInfo.setJcrId(migrationUploadRequestDto.getJcrId());
     documentInfo.setRevisionId(migrationUploadRequestDto.getRevId());
     documentInfo.setRevisionName(migrationUploadRequestDto.getRevName());
+    documentInfo.setVersion(latestVersion);
     return documentInfo;
   }
 
@@ -65,7 +71,7 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     return documentInfoRepository.save(documentInfo);
   }
 
-  private static DocumentInfo mapUploadRequestDtoToDocumentInfo(UploadRequestDto uploadRequestDto) {
+  private static DocumentInfo mapUploadRequestDtoToDocumentInfo(UploadRequestDto uploadRequestDto, Long version) {
     log.info("DocumentInfoServiceImpl:: mapUploadRequestDtoToDocumentInfo");
     if (uploadRequestDto == null) {
       return null;
@@ -78,6 +84,7 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     documentInfo.setStatus(uploadRequestDto.getStatus());
     documentInfo.setDocumentId(uploadRequestDto.getDocumentId());
     documentInfo.setJcrId(JCRUtil.generateJCRId());
+    documentInfo.setVersion(version);
     documentInfo.setRevisionId(JCRUtil.generateJCRRevId());
     return documentInfo;
   }
