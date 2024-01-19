@@ -58,8 +58,8 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     documentInfo.setBasePath(migrationUploadRequestDto.getBasePath());
     documentInfo.setFileName(migrationUploadRequestDto.getFileName());
     documentInfo.setDocumentType(migrationUploadRequestDto.getDocumentType());
-    documentInfo.setStatus(migrationUploadRequestDto.getStatus());
-    documentInfo.setDocumentId(migrationUploadRequestDto.getDocumentId());
+//    documentInfo.setStatus(migrationUploadRequestDto.getStatus());
+//    documentInfo.setDocumentId(migrationUploadRequestDto.getDocumentId());
     documentInfo.setJcrId(migrationUploadRequestDto.getJcrId());
     documentInfo.setRevisionId(migrationUploadRequestDto.getRevId());
     documentInfo.setRevisionName(migrationUploadRequestDto.getRevName());
@@ -81,8 +81,8 @@ public class DocumentInfoServiceImpl implements DocumentInfoService {
     documentInfo.setBasePath(uploadRequestDto.getBasePath());
     documentInfo.setFileName(uploadRequestDto.getFileName());
     documentInfo.setDocumentType(uploadRequestDto.getDocumentType());
-    documentInfo.setStatus(uploadRequestDto.getStatus());
-    documentInfo.setDocumentId(uploadRequestDto.getDocumentId());
+//    documentInfo.setStatus(uploadRequestDto.getStatus());
+//    documentInfo.setDocumentId(uploadRequestDto.getDocumentId());
     documentInfo.setJcrId(JCRUtil.generateJCRId());
     documentInfo.setVersion(version);
     documentInfo.setRevisionId(JCRUtil.generateJCRRevId());

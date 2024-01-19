@@ -32,8 +32,8 @@ public class DocumentInfo {
   @Column(name = "JCR_ID")
   private String jcrId;
 
-  @Column(name = "DOCUMENT_ID")
-  private String documentId;
+//  @Column(name = "DOCUMENT_ID")
+//  private String documentId;
 
   @Column(name = "REVISION_ID")
   private String revisionId;
@@ -44,8 +44,8 @@ public class DocumentInfo {
   @Column(name = "REVISION_NAME")
   private String revisionName;
 
-  @Column(name = "STATUS")
-  private String status;
+//  @Column(name = "STATUS")
+//  private String status;
 
   @Column(name = "IS_DELETED")
   private Boolean isDeleted = false;
