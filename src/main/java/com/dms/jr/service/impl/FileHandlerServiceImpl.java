@@ -17,9 +17,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
@@ -45,7 +42,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
     String basePath = JCRUtil.generateBasePath(uploadRequestDto.getBasePath());
     String fileName = uploadRequestDto.getFileName();
     log.info("BasePath: {},File name : {}", basePath, fileName);
-    File newFile;
+    File newFile = null;
+    Long totalSpace;
 
     // Create a JCR session
     Session session = getSession(repository);
@@ -53,10 +51,8 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
+      totalSpace = newFile.getTotalSpace();
       RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
-      Path filePath = Paths.get(newFile.getAbsolutePath());
-      Files.delete(filePath);
-      log.info("Local file deleted successfully.");
     } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());
@@ -64,8 +60,10 @@ public class FileHandlerServiceImpl implements FileHandlerService {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(
           ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+    } finally {
+      newFile.delete();
+      log.info("Local file deleted successfully.");
     }
-    newFile.deleteOnExit();
 
     sessionSave(session);
     sessionLogout(session);
@@ -74,7 +72,7 @@ public class FileHandlerServiceImpl implements FileHandlerService {
         .jcrId(documentInfo.getJcrId())
         .revId(documentInfo.getRevisionId())
         .fileName(documentInfo.getFileName())
-        .size(String.valueOf(newFile.getTotalSpace()))
+        .size(String.valueOf(totalSpace))
         .revision(documentInfo.getRevisionName())
         .build();
   }
@@ -163,13 +161,14 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
   @Override
   public UploadResponseDto uploadFile(
-          MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
+      MigrationUploadRequestDto migrationUploadRequestDto, MultipartFile file) {
     log.info("FileHandlerServiceImpl:: uploadFile ");
 
     String basePath = JCRUtil.generateBasePath(migrationUploadRequestDto.getBasePath());
     String fileName = migrationUploadRequestDto.getFileName();
     log.info("BasePath: {},File name : {}", basePath, fileName);
-    File newFile;
+    File newFile = null;
+    Long totalSpace;
 
     // Create a JCR session
     Session session = getSession(repository);
@@ -177,31 +176,30 @@ public class FileHandlerServiceImpl implements FileHandlerService {
 
     try {
       newFile = convertMultipartFileToFile(fileName, file.getBytes());
+      totalSpace = newFile.getTotalSpace();
       RepositoryHelper.addFileNode(session, basePath, newFile, JackrabbitConstants.USER);
-      Path filePath = Paths.get(newFile.getAbsolutePath());
-      Files.delete(filePath);
-      log.info("Local file deleted successfully.");
-    }
-
-    catch (ServiceException e) {
+    } catch (ServiceException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(e.getCode(), e.getMessage());
     } catch (RepositoryException | IOException e) {
       documentInfoService.deleteById(documentInfo.getId());
       throw new ServiceException(
-              ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+          ErrorCode.FILE_UPLOAD, ErrorMessages.FILE_UPLOAD + ": " + e.getMessage());
+    } finally {
+      newFile.delete();
+      log.info("Local file deleted successfully.");
     }
 
     sessionSave(session);
     sessionLogout(session);
 
     return UploadResponseDto.builder()
-            .jcrId(documentInfo.getJcrId())
-            .revId(documentInfo.getRevisionId())
-            .fileName(documentInfo.getFileName())
-            .size(String.valueOf(newFile.getTotalSpace()))
-            .revision(documentInfo.getRevisionName())
-            .build();
+        .jcrId(documentInfo.getJcrId())
+        .revId(documentInfo.getRevisionId())
+        .fileName(documentInfo.getFileName())
+        .size(String.valueOf(totalSpace))
+        .revision(documentInfo.getRevisionName())
+        .build();
   }
 
   private void sessionSave(Session session) {
